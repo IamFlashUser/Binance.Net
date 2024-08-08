@@ -176,6 +176,19 @@ Make a one time donation in a crypto currency of your choice. If you prefer to d
 Alternatively, sponsor me on Github using [Github Sponsors](https://github.com/sponsors/JKorf). 
 
 ## Release notes
+* Version 10.1.1 - 08 Aug 2024
+    * Fix UnrealizedPnl deserialization in CoinFuturesApi.Account.GetPositionInformationAsync
+
+* Version 10.1.0 - 07 Aug 2024
+    * Updated CryptoExchange.Net to version 7.11.0, see https://github.com/JKorf/CryptoExchange.Net/releases/tag/7.11.0
+    * Updated XML code comments
+    * Fixed BinanceFuturesAccountAsset MaintMargin deserialization
+    * Fixed BinancePosition MaintMargin deserialization
+    * Fixed BinancePosition UnrealizedProfit deserialization for Coin-M futures
+
+* Version 10.0.1 - 05 Aug 2024
+    * Fixed deserialization issue UsdtFuturesApi.Account.GetIncomeHistoryAsync
+
 * Version 10.0.0 - 27 Jul 2024
     * Updated CryptoExchange.Net to version 7.10.0, see https://github.com/JKorf/CryptoExchange.Net/releases/tag/7.10.0
     * Switch from Newtonsoft.Json implementation to System.Text.Json for (de)serialization
