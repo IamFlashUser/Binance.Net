@@ -304,6 +304,15 @@ Make a one time donation in a crypto currency of your choice. If you prefer to d
 Alternatively, sponsor me on Github using [Github Sponsors](https://github.com/sponsors/JKorf). 
 
 ## Release notes
+* Version 13.4.0 - 14 Aug 2026
+    * Added restClient.SpotApi.ExchangeData.GetAssetTagsAsync endpoint
+    * Added Symbol to BinanceFuturesStreamAccountUpdateData model
+    * Added Activated to BinanceAlgoOrderUpdateOrder model
+    * Added Affiliate endpoints under GeneralApi.Affiliate
+    * Updated futures historical trade endpoints weights from 20 to 200
+    * Updated restClient.SpotApi.Account.TransferAsync weight from 900 to 300
+    * Fixed Shared GetOpenInterestAsync marked as Authenticated
+
 * Version 13.3.0 - 29 Jul 2026
     * Updated CryptoExchange.Net to version 12.4.0
     * Added calculation of AveragePrice on Shared order models if data is available and AveragePrice is not set
