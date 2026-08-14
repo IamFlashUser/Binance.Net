@@ -979,7 +979,7 @@ namespace Binance.Net.Clients.UsdFuturesApi
 
         #region Open Interest client
 
-        GetOpenInterestOptions IOpenInterestRestClient.GetOpenInterestOptions { get; } = new GetOpenInterestOptions(_exchangeName, true);
+        GetOpenInterestOptions IOpenInterestRestClient.GetOpenInterestOptions { get; } = new GetOpenInterestOptions(_exchangeName, false);
         async Task<HttpResult<SharedOpenInterest>> IOpenInterestRestClient.GetOpenInterestAsync(GetOpenInterestRequest request, CancellationToken ct)
         {
             var validationError = SharedClient.GetOpenInterestOptions.ValidateRequest(request, this);
