@@ -43,6 +43,11 @@ namespace Binance.Net.Enums
         /// </summary>
         [Map("HK_EQUITY")]
         HkEquity,
+        /// <summary>
+        /// ["<c>CN_EQUITY</c>"] Chinese Equity
+        /// </summary>
+        [Map("CN_EQUITY")]
+        CnEquity,
     }
 }
 

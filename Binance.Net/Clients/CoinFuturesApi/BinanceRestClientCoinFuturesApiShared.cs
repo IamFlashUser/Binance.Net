@@ -84,7 +84,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                             x.HighPrice, 
                             x.LowPrice,
                             x.OpenPrice,
-                            new SharedOrderQuantity(x.Volume, x.QuoteVolume)))
+                            new SharedOrderQuantity(x.Volume, null, x.QuoteVolume)))
                     .ToArray(), nextPageRequest);
 
         }
@@ -125,6 +125,8 @@ namespace Binance.Net.Clients.CoinFuturesApi
 
                     if (symbol.UnderlyingType == UnderlyingType.Equity
                     || symbol.UnderlyingType == UnderlyingType.KrEquity
+                    || symbol.UnderlyingType == UnderlyingType.HkEquity
+                    || symbol.UnderlyingType == UnderlyingType.CnEquity
                     || symbol.UnderlyingType == UnderlyingType.PreMarket)
                     {
                         return new SharedAssetInfo(symbol.BaseAsset, SharedAssetType.TradFi, SharedAssetSubType.Equity);
@@ -228,9 +230,9 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, ticker.Symbol),
                 ticker.Symbol,
                 ticker.BestAskPrice,
-                ticker.BestAskQuantity,
+                new SharedOrderQuantity(contractQuantity: ticker.BestAskQuantity),
                 ticker.BestBidPrice,
-                ticker.BestBidQuantity));
+                new SharedOrderQuantity(contractQuantity: ticker.BestBidQuantity)));
 
         }
 
@@ -265,7 +267,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 ticker.LastPrice,
                 ticker.HighPrice,
                 ticker.LowPrice,
-                new SharedOrderQuantity(ticker.Volume, ticker.QuoteVolume),
+                new SharedOrderQuantity(ticker.Volume, null, ticker.QuoteVolume),
                 ticker.PriceChangePercent)
             {
                 IndexPrice = mark.IndexPrice,
@@ -304,7 +306,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                     x.LastPrice,
                     x.HighPrice,
                     x.LowPrice,
-                    new SharedOrderQuantity(x.Volume, x.QuoteVolume),
+                    new SharedOrderQuantity(x.Volume, null, x.QuoteVolume),
                     x.PriceChangePercent)
                 {
                     IndexPrice = markPrice.IndexPrice,
@@ -336,7 +338,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 return HttpResult.Fail<SharedTrade[]>(result);
 
             return HttpResult.Ok(result, result.Data.Select(x =>
-            new SharedTrade(request.Symbol, symbol, new SharedOrderQuantity(x.BaseQuantity, x.QuoteQuantity), x.Price, x.TradeTime)
+            new SharedTrade(request.Symbol, symbol, new SharedOrderQuantity(x.BaseQuantity,null, x.QuoteQuantity), x.Price, x.TradeTime)
             {
                 Side = x.BuyerIsMaker ? SharedOrderSide.Sell : SharedOrderSide.Buy,
             }).ToArray());
@@ -352,10 +354,10 @@ namespace Binance.Net.Clients.CoinFuturesApi
         SharedOrderType[] IFuturesOrderRestClient.FuturesSupportedOrderTypes { get; } = new[] { SharedOrderType.Limit, SharedOrderType.Market };
         SharedTimeInForce[] IFuturesOrderRestClient.FuturesSupportedTimeInForce { get; } = new[] { SharedTimeInForce.GoodTillCanceled, SharedTimeInForce.ImmediateOrCancel, SharedTimeInForce.FillOrKill };
         SharedQuantitySupport IFuturesOrderRestClient.FuturesSupportedOrderQuantity { get; } = new SharedQuantitySupport(
-                SharedQuantityType.BaseAsset,
-                SharedQuantityType.BaseAsset,
-                SharedQuantityType.BaseAsset,
-                SharedQuantityType.BaseAsset);
+                SharedQuantityType.Contracts,
+                SharedQuantityType.Contracts,
+                SharedQuantityType.Contracts,
+                SharedQuantityType.Contracts);
 
         string IFuturesOrderRestClient.GenerateClientOrderId() => ExchangeHelpers.RandomString(20);
 
@@ -370,7 +372,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 request.Symbol!.GetSymbol(FormatSymbol),
                 request.Side == SharedOrderSide.Buy ? Enums.OrderSide.Buy : Enums.OrderSide.Sell,
                 request.OrderType == SharedOrderType.Limit ? Enums.FuturesOrderType.Limit : Enums.FuturesOrderType.Market,
-                quantity: request.Quantity?.QuantityInBaseAsset,
+                quantity: request.Quantity?.QuantityInContracts,
                 price: request.Price,
                 positionSide: request.PositionSide == null ? null : request.PositionSide == SharedPositionSide.Long ? PositionSide.Long : PositionSide.Short,
                 reduceOnly: request.ReduceOnly,
@@ -411,8 +413,8 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 ClientOrderId = order.Data.ClientOrderId,
                 AveragePrice = order.Data.AveragePrice == 0 ? null : order.Data.AveragePrice,
                 OrderPrice = order.Data.Price == 0 ? null : order.Data.Price,
-                OrderQuantity = new SharedOrderQuantity(order.Data.Quantity),
-                QuantityFilled = new SharedOrderQuantity(order.Data.QuantityFilled, order.Data.QuoteQuantityFilled),
+                OrderQuantity = new SharedOrderQuantity(contractQuantity: order.Data.Quantity),
+                QuantityFilled = new SharedOrderQuantity(contractQuantity: order.Data.QuantityFilled, quoteAssetQuantity: order.Data.QuoteQuantityFilled),
                 TimeInForce = ParseTimeInForce(order.Data.TimeInForce),
                 UpdateTime = order.Data.UpdateTime,
                 PositionSide = order.Data.PositionSide == PositionSide.Both ? null : order.Data.PositionSide == PositionSide.Long ? SharedPositionSide.Long : SharedPositionSide.Short,
@@ -447,8 +449,8 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 ClientOrderId = x.ClientOrderId,
                 AveragePrice = x.AveragePrice == 0 ? null : x.AveragePrice,
                 OrderPrice = x.Price == 0 ? null : x.Price,
-                OrderQuantity = new SharedOrderQuantity(x.Quantity),
-                QuantityFilled = new SharedOrderQuantity(x.QuantityFilled, x.QuoteQuantityFilled),
+                OrderQuantity = new SharedOrderQuantity(contractQuantity: x.Quantity),
+                QuantityFilled = new SharedOrderQuantity(contractQuantity: x.QuantityFilled, quoteAssetQuantity: x.QuoteQuantityFilled),
                 TimeInForce = ParseTimeInForce(x.TimeInForce),
                 UpdateTime = x.UpdateTime,
                 PositionSide = x.PositionSide == PositionSide.Both ? null : x.PositionSide == PositionSide.Long ? SharedPositionSide.Long : SharedPositionSide.Short,
@@ -513,8 +515,8 @@ namespace Binance.Net.Clients.CoinFuturesApi
                         ClientOrderId = x.ClientOrderId,
                         AveragePrice = x.AveragePrice == 0 ? null : x.AveragePrice,
                         OrderPrice = x.Price == 0 ? null : x.Price,
-                        OrderQuantity = new SharedOrderQuantity(x.Quantity),
-                        QuantityFilled = new SharedOrderQuantity(x.QuantityFilled, x.QuoteQuantityFilled),
+                        OrderQuantity = new SharedOrderQuantity(contractQuantity: x.Quantity),
+                        QuantityFilled = new SharedOrderQuantity(contractQuantity: x.QuantityFilled, quoteAssetQuantity: x.QuoteQuantityFilled),
                         TimeInForce = ParseTimeInForce(x.TimeInForce),
                         UpdateTime = x.UpdateTime,
                         PositionSide = x.PositionSide == PositionSide.Both ? null : x.PositionSide == PositionSide.Long ? SharedPositionSide.Long : SharedPositionSide.Short,
@@ -546,12 +548,11 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 x.OrderId.ToString(),
                 x.Id.ToString(),
                 x.Buyer ? SharedOrderSide.Buy : SharedOrderSide.Sell,
-                x.Quantity,
+                new SharedOrderQuantity(contractQuantity: x.Quantity),
                 x.Price,
                 x.Timestamp)
             {
                 Price = x.Price,
-                Quantity = x.Quantity,
                 Fee = x.Fee,
                 FeeAsset = x.FeeAsset,
                 Role = x.Maker ? SharedRole.Maker : SharedRole.Taker
@@ -604,12 +605,11 @@ namespace Binance.Net.Clients.CoinFuturesApi
                             x.OrderId.ToString(),
                             x.Id.ToString(),
                             x.Buyer ? SharedOrderSide.Buy : SharedOrderSide.Sell,
-                            x.Quantity,
+                            new SharedOrderQuantity(contractQuantity: x.Quantity),
                             x.Price,
                             x.Timestamp)
                         {
                             Price = x.Price,
-                            Quantity = x.Quantity,
                             Fee = x.Fee,
                             FeeAsset = x.FeeAsset,
                             Role = x.Maker ? SharedRole.Maker : SharedRole.Taker
@@ -647,15 +647,20 @@ namespace Binance.Net.Clients.CoinFuturesApi
             if (!result.Success)
                 return HttpResult.Fail<SharedPosition[]>(result);
 
-            return HttpResult.Ok(result, result.Data.Select(x => new SharedPosition(ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, x.Symbol), x.Symbol, Math.Abs(x.Quantity), x.UpdateTime)
-            {
-                UnrealizedPnl = x.UnrealizedPnl,
-                LiquidationPrice = x.LiquidationPrice == 0 ? null : x.LiquidationPrice,
-                Leverage = x.Leverage,
-                AverageOpenPrice = x.EntryPrice,
-                PositionMode = x.PositionSide == PositionSide.Both ? SharedPositionMode.OneWay : SharedPositionMode.HedgeMode,
-                PositionSide = x.PositionSide == PositionSide.Both ? (x.Quantity >= 0 ? SharedPositionSide.Long : SharedPositionSide.Short) : x.PositionSide == PositionSide.Short ? SharedPositionSide.Short : SharedPositionSide.Long
-            }).ToArray());
+            return HttpResult.Ok(result, result.Data.Select(x => 
+                new SharedPosition(
+                    ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, x.Symbol), 
+                    x.Symbol, 
+                    new SharedOrderQuantity(contractQuantity: Math.Abs(x.Quantity)), 
+                    x.UpdateTime)
+                {
+                    UnrealizedPnl = x.UnrealizedPnl,
+                    LiquidationPrice = x.LiquidationPrice == 0 ? null : x.LiquidationPrice,
+                    Leverage = x.Leverage,
+                    AverageOpenPrice = x.EntryPrice,
+                    PositionMode = x.PositionSide == PositionSide.Both ? SharedPositionMode.OneWay : SharedPositionMode.HedgeMode,
+                    PositionSide = x.PositionSide == PositionSide.Both ? (x.Quantity >= 0 ? SharedPositionSide.Long : SharedPositionSide.Short) : x.PositionSide == PositionSide.Short ? SharedPositionSide.Short : SharedPositionSide.Long
+                }).ToArray());
 
         }
 
@@ -763,8 +768,8 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 ClientOrderId = order.Data.ClientOrderId,
                 AveragePrice = order.Data.AveragePrice == 0 ? null : order.Data.AveragePrice,
                 OrderPrice = order.Data.Price == 0 ? null : order.Data.Price,
-                OrderQuantity = new SharedOrderQuantity(order.Data.Quantity, contractQuantity: order.Data.Quantity),
-                QuantityFilled = new SharedOrderQuantity(order.Data.QuantityFilled, order.Data.QuoteQuantityFilled, order.Data.QuantityFilled),
+                OrderQuantity = new SharedOrderQuantity(contractQuantity: order.Data.Quantity),
+                QuantityFilled = new SharedOrderQuantity(null, order.Data.QuoteQuantityFilled, order.Data.QuantityFilled),
                 TimeInForce = ParseTimeInForce(order.Data.TimeInForce),
                 UpdateTime = order.Data.UpdateTime,
                 PositionSide = order.Data.PositionSide == PositionSide.Both ? null : order.Data.PositionSide == PositionSide.Long ? SharedPositionSide.Long : SharedPositionSide.Short,
@@ -898,7 +903,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
             if (!result.Success)
                 return HttpResult.Fail<SharedOrderBook>(result);
 
-            return HttpResult.Ok(result, new SharedOrderBook(result.Data.Asks, result.Data.Bids));
+            return HttpResult.Ok(result, new SharedOrderBook(SharedQuantityType.Contracts, result.Data.Asks, result.Data.Bids));
 
         }
 
@@ -948,7 +953,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
             // Return
             return HttpResult.Ok(result, ExchangeHelpers.ApplyFilter(result.Data, x => x.TradeTime, request.StartTime, request.EndTime, direction)
                     .Select(x =>
-                        new SharedTrade(request.Symbol, symbol, new SharedOrderQuantity(x.Quantity), x.Price, x.TradeTime)
+                        new SharedTrade(request.Symbol, symbol, new SharedOrderQuantity(contractQuantity: x.Quantity), x.Price, x.TradeTime)
                         {
                             Side = x.BuyerIsMaker ? SharedOrderSide.Sell : SharedOrderSide.Buy,
                         }).ToArray(), nextPageRequest);
@@ -1019,7 +1024,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
             if (!result.Success)
                 return HttpResult.Fail<SharedOpenInterest>(result);
 
-            return HttpResult.Ok(result, new SharedOpenInterest(result.Data.OpenInterest));
+            return HttpResult.Ok(result, new SharedOpenInterest(new SharedOrderQuantity(contractQuantity: result.Data.OpenInterest)));
 
         }
 
@@ -1218,8 +1223,8 @@ namespace Binance.Net.Clients.CoinFuturesApi
             {
                 AveragePrice = order.Data.AveragePrice == 0 ? null : order.Data.AveragePrice,
                 OrderPrice = order.Data.Price == 0 ? null : order.Data.Price,
-                OrderQuantity = new SharedOrderQuantity(order.Data.Quantity, contractQuantity: order.Data.Quantity),
-                QuantityFilled = new SharedOrderQuantity(order.Data.QuantityFilled, order.Data.QuoteQuantityFilled, contractQuantity: order.Data.QuantityFilled),
+                OrderQuantity = new SharedOrderQuantity(contractQuantity: order.Data.Quantity),
+                QuantityFilled = new SharedOrderQuantity(null, order.Data.QuoteQuantityFilled, contractQuantity: order.Data.QuantityFilled),
                 TimeInForce = ParseTimeInForce(order.Data.TimeInForce),
                 UpdateTime = order.Data.UpdateTime,
                 PositionSide = order.Data.PositionSide == PositionSide.Both ? null : order.Data.PositionSide == PositionSide.Long ? SharedPositionSide.Long : SharedPositionSide.Short,

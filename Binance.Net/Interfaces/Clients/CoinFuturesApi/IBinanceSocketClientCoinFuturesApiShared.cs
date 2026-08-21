@@ -14,7 +14,8 @@ namespace Binance.Net.Interfaces.Clients.CoinFuturesApi
         IKlineSocketClient,
         IFuturesOrderSocketClient,
         IBalanceSocketClient,
-        IPositionSocketClient
+        IPositionSocketClient,
+        IFuturesOrderManagementSocketClient
     {
     }
 }

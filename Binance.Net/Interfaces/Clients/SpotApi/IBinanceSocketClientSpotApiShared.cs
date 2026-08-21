@@ -13,7 +13,8 @@ namespace Binance.Net.Interfaces.Clients.SpotApi
         IBookTickerSocketClient,
         IBalanceSocketClient,
         IKlineSocketClient,
-        IOrderBookSocketClient
+        IOrderBookSocketClient,
+        ISpotOrderManagementSocketClient
     {
     }
 }

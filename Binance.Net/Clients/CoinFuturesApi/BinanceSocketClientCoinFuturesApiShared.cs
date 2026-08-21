@@ -37,7 +37,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                     update.Data.LastPrice, 
                     update.Data.LowPrice,
                     update.Data.HighPrice,
-                    new SharedOrderQuantity(update.Data.Volume, update.Data.QuoteVolume),
+                    new SharedOrderQuantity(contractQuantity: update.Data.Volume, quoteAssetQuantity: update.Data.QuoteVolume),
                     update.Data.PriceChangePercent)
             {
             })), ct: ct).ConfigureAwait(false);
@@ -72,7 +72,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                         x.LastPrice,
                         x.LowPrice,
                         x.HighPrice, 
-                        new SharedOrderQuantity(x.Volume, x.QuoteVolume),
+                        new SharedOrderQuantity(contractQuantity: x.Volume, quoteAssetQuantity: x.QuoteVolume),
                         x.PriceChangePercent)
                     {
                     }).ToArray()));
@@ -103,7 +103,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 new SharedTrade(
                     ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, update.Data.Symbol),
                     update.Data.Symbol,
-                    new SharedOrderQuantity(update.Data.Quantity), 
+                    new SharedOrderQuantity(contractQuantity: update.Data.Quantity), 
                     update.Data.Price,
                     update.Data.TradeTime)
                 { 
@@ -130,7 +130,15 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 return WebSocketResult.Fail<UpdateSubscription>(Exchange, validationError);
 
             var symbols = request.SymbolNames(FormatSymbol);
-            var result = await ExchangeData.SubscribeToBookTickerUpdatesAsync(symbols, update => handler(update.ToType(new SharedBookTicker(ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, update.Data.Symbol), update.Data.Symbol, update.Data.BestAskPrice, update.Data.BestAskQuantity, update.Data.BestBidPrice, update.Data.BestBidQuantity))), ct).ConfigureAwait(false);
+            var result = await ExchangeData.SubscribeToBookTickerUpdatesAsync(symbols, update => handler(
+                update.ToType(
+                    new SharedBookTicker(
+                        ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, update.Data.Symbol),
+                        update.Data.Symbol,
+                        update.Data.BestAskPrice,
+                        new SharedOrderQuantity(contractQuantity: update.Data.BestAskQuantity), 
+                        update.Data.BestBidPrice, 
+                        new SharedOrderQuantity(contractQuantity: update.Data.BestBidQuantity)))), ct).ConfigureAwait(false);
             
             return result;
         }
@@ -159,7 +167,7 @@ namespace Binance.Net.Clients.CoinFuturesApi
                     update.Data.Data.HighPrice, 
                     update.Data.Data.LowPrice, 
                     update.Data.Data.OpenPrice,
-                    new SharedOrderQuantity(update.Data.Data.Volume, update.Data.Data.QuoteVolume)))), ct).ConfigureAwait(false);
+                    new SharedOrderQuantity(contractQuantity: update.Data.Data.Volume, quoteAssetQuantity: update.Data.Data.QuoteVolume)))), ct).ConfigureAwait(false);
             
             return result;
         }
@@ -178,7 +186,9 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 return WebSocketResult.Fail<UpdateSubscription>(Exchange, validationError);
 
             var symbols = request.SymbolNames(FormatSymbol);
-            var result = await ExchangeData.SubscribeToPartialOrderBookUpdatesAsync(symbols, request.Limit ?? 20, 100, update => handler(update.ToType(new SharedOrderBook(update.Data.Asks, update.Data.Bids))), ct).ConfigureAwait(false);
+            var result = await ExchangeData.SubscribeToPartialOrderBookUpdatesAsync(symbols, request.Limit ?? 20, 100, update => handler(
+                update.ToType(
+                    new SharedOrderBook(SharedQuantityType.BaseAsset, update.Data.Asks, update.Data.Bids))), ct).ConfigureAwait(false);
             
             return result;
         }
@@ -217,13 +227,19 @@ namespace Binance.Net.Clients.CoinFuturesApi
                 return WebSocketResult.Fail<UpdateSubscription>(Exchange, validationError);
 
             var result = await Account.SubscribeToUserDataUpdatesAsync(
-                onAccountUpdate: update => handler(update.ToType(update.Data.UpdateData.Positions.Select(x => new SharedPosition(ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, x.Symbol), x.Symbol, Math.Abs(x.Quantity), update.Data.EventTime)
-                {
-                    AverageOpenPrice = x.EntryPrice,
-                    PositionMode = x.PositionSide == PositionSide.Both ? SharedPositionMode.OneWay : SharedPositionMode.HedgeMode,
-                    PositionSide = x.PositionSide == Enums.PositionSide.Both ? (x.Quantity >= 0 ? SharedPositionSide.Long : SharedPositionSide.Short) : x.PositionSide == Enums.PositionSide.Short ? SharedPositionSide.Short : SharedPositionSide.Long,
-                    UnrealizedPnl = x.UnrealizedPnl
-                }).ToArray())),
+                onAccountUpdate: update => handler(
+                    update.ToType(update.Data.UpdateData.Positions.Select(x =>
+                        new SharedPosition(
+                            ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, x.Symbol),
+                            x.Symbol,
+                            new SharedOrderQuantity(contractQuantity: Math.Abs(x.Quantity)),
+                            update.Data.EventTime)
+                        {
+                            AverageOpenPrice = x.EntryPrice,
+                            PositionMode = x.PositionSide == PositionSide.Both ? SharedPositionMode.OneWay : SharedPositionMode.HedgeMode,
+                            PositionSide = x.PositionSide == Enums.PositionSide.Both ? (x.Quantity >= 0 ? SharedPositionSide.Long : SharedPositionSide.Short) : x.PositionSide == Enums.PositionSide.Short ? SharedPositionSide.Short : SharedPositionSide.Long,
+                            UnrealizedPnl = x.UnrealizedPnl
+                        }).ToArray())),
                 ct: ct).ConfigureAwait(false);
 
             return result;
@@ -255,8 +271,8 @@ namespace Binance.Net.Clients.CoinFuturesApi
                     {
                         ClientOrderId = update.Data.UpdateData.ClientOrderId,
                         OrderPrice = update.Data.UpdateData.Price == 0 ? null : update.Data.UpdateData.Price,
-                        OrderQuantity = new SharedOrderQuantity(update.Data.UpdateData.Quantity, contractQuantity: update.Data.UpdateData.Quantity),
-                        QuantityFilled = new SharedOrderQuantity(update.Data.UpdateData.AccumulatedQuantityOfFilledTrades, contractQuantity : update.Data.UpdateData.AccumulatedQuantityOfFilledTrades),
+                        OrderQuantity = new SharedOrderQuantity(contractQuantity: update.Data.UpdateData.Quantity),
+                        QuantityFilled = new SharedOrderQuantity(contractQuantity : update.Data.UpdateData.AccumulatedQuantityOfFilledTrades),
                         UpdateTime = update.Data.UpdateData.UpdateTime,
                         AveragePrice = update.Data.UpdateData.AveragePrice == 0 ? null : update.Data.UpdateData.AveragePrice,
                         PositionSide = update.Data.UpdateData.PositionSide == Enums.PositionSide.Long ? SharedPositionSide.Long : update.Data.UpdateData.PositionSide == Enums.PositionSide.Short ? SharedPositionSide.Short : null,
@@ -265,13 +281,22 @@ namespace Binance.Net.Clients.CoinFuturesApi
                         TriggerPrice = update.Data.UpdateData.StopPrice == 0 ? null : update.Data.UpdateData.StopPrice,
                         IsTriggerOrder = update.Data.UpdateData.StopPrice > 0,
                         IsCloseOrder = update.Data.UpdateData.IsClosePositionOrder,
-                        LastTrade = update.Data.UpdateData.QuantityOfLastFilledTrade == 0 ? null : new SharedUserTrade(ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, update.Data.UpdateData.Symbol), update.Data.UpdateData.Symbol, update.Data.UpdateData.OrderId.ToString(), update.Data.UpdateData.TradeId.ToString(), update.Data.UpdateData.Side == Enums.OrderSide.Buy ? SharedOrderSide.Buy : SharedOrderSide.Sell, update.Data.UpdateData.QuantityOfLastFilledTrade, update.Data.UpdateData.PriceLastFilledTrade, update.Data.UpdateData.UpdateTime)
-                        {
-                            Fee = update.Data.UpdateData.Fee,
-                            FeeAsset = update.Data.UpdateData.FeeAsset,
-                            ClientOrderId = update.Data.UpdateData.ClientOrderId,
-                            Role = update.Data.UpdateData.BuyerIsMaker ? SharedRole.Maker : SharedRole.Taker
-                        }
+                        LastTrade = update.Data.UpdateData.QuantityOfLastFilledTrade == 0 ? null : 
+                            new SharedUserTrade(
+                                ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, update.Data.UpdateData.Symbol),
+                                update.Data.UpdateData.Symbol,
+                                update.Data.UpdateData.OrderId.ToString(),
+                                update.Data.UpdateData.TradeId.ToString(),
+                                update.Data.UpdateData.Side == Enums.OrderSide.Buy ? SharedOrderSide.Buy : SharedOrderSide.Sell, 
+                                new SharedOrderQuantity(contractQuantity: update.Data.UpdateData.QuantityOfLastFilledTrade), 
+                                update.Data.UpdateData.PriceLastFilledTrade,
+                                update.Data.UpdateData.UpdateTime)
+                            {
+                                Fee = update.Data.UpdateData.Fee,
+                                FeeAsset = update.Data.UpdateData.FeeAsset,
+                                ClientOrderId = update.Data.UpdateData.ClientOrderId,
+                                Role = update.Data.UpdateData.BuyerIsMaker ? SharedRole.Maker : SharedRole.Taker
+                            }
                     }
                 })),
                 ct: ct).ConfigureAwait(false);
@@ -306,6 +331,76 @@ namespace Binance.Net.Clients.CoinFuturesApi
 
             return SharedOrderType.Other;
         }
+        #endregion
+
+        #region Futures Order Client
+
+        SharedFeeDeductionType IFuturesOrderManagementSocketClient.FuturesFeeDeductionType => SharedFeeDeductionType.AddToCost;
+        SharedFeeAssetType IFuturesOrderManagementSocketClient.FuturesFeeAssetType => SharedFeeAssetType.BaseAsset;
+        SharedOrderType[] IFuturesOrderManagementSocketClient.FuturesSupportedOrderTypes { get; } = new[] { SharedOrderType.Limit, SharedOrderType.Market };
+        SharedTimeInForce[] IFuturesOrderManagementSocketClient.FuturesSupportedTimeInForce { get; } = new[] { SharedTimeInForce.GoodTillCanceled, SharedTimeInForce.ImmediateOrCancel, SharedTimeInForce.FillOrKill };
+        SharedQuantitySupport IFuturesOrderManagementSocketClient.FuturesSupportedOrderQuantity { get; } = new SharedQuantitySupport(
+                SharedQuantityType.Contracts,
+                SharedQuantityType.Contracts,
+                SharedQuantityType.Contracts,
+                SharedQuantityType.Contracts);
+
+        string IFuturesOrderManagementSocketClient.GenerateClientOrderId() => ExchangeHelpers.RandomString(20);
+
+        PlaceFuturesOrderSocketOptions IFuturesOrderManagementSocketClient.PlaceFuturesOrderOptions { get; } = new PlaceFuturesOrderSocketOptions(_exchangeName, false);
+        async Task<QueryResult<SharedId>> IFuturesOrderManagementSocketClient.PlaceFuturesOrderAsync(PlaceFuturesOrderRequest request, CancellationToken ct)
+        {
+            var validationError = SharedClient.PlaceFuturesOrderOptions.ValidateRequest(request, this);
+            if (validationError != null)
+                return QueryResult.Fail<SharedId>(Exchange, validationError);
+
+            var result = await Trading.PlaceOrderAsync(
+                request.Symbol!.GetSymbol(FormatSymbol),
+                request.Side == SharedOrderSide.Buy ? Enums.OrderSide.Buy : Enums.OrderSide.Sell,
+                request.OrderType == SharedOrderType.Limit ? Enums.FuturesOrderType.Limit : Enums.FuturesOrderType.Market,
+                quantity: request.Quantity?.QuantityInContracts,
+                price: request.Price,
+                positionSide: request.PositionSide == null ? null : request.PositionSide == SharedPositionSide.Long ? PositionSide.Long : PositionSide.Short,
+                reduceOnly: request.ReduceOnly,
+                timeInForce: GetTimeInForce(request.OrderType, request.TimeInForce),
+                newClientOrderId: request.ClientOrderId,
+                ct: ct).ConfigureAwait(false);
+
+            if (!result.Success)
+                return QueryResult.Fail<SharedId>(result);
+
+            return QueryResult.Ok(result, new SharedId(result.Data.Result.Id.ToString()));
+
+        }
+
+        CancelFuturesOrderSocketOptions IFuturesOrderManagementSocketClient.CancelFuturesOrderOptions { get; } = new CancelFuturesOrderSocketOptions(_exchangeName, true);
+        async Task<QueryResult<SharedId>> IFuturesOrderManagementSocketClient.CancelFuturesOrderAsync(CancelOrderRequest request, CancellationToken ct)
+        {
+            var validationError = SharedClient.CancelFuturesOrderOptions.ValidateRequest(request, this);
+            if (validationError != null)
+                return QueryResult.Fail<SharedId>(Exchange, validationError);
+
+            if (!long.TryParse(request.OrderId, out var orderId))
+                return QueryResult.Fail<SharedId>(Exchange, ArgumentError.Invalid(nameof(CancelOrderRequest.OrderId), "Invalid order id"));
+
+            var order = await Trading.CancelOrderAsync(request.Symbol!.GetSymbol(FormatSymbol), orderId).ConfigureAwait(false);
+            if (!order.Success)
+                return QueryResult.Fail<SharedId>(order);
+
+            return QueryResult.Ok(order, new SharedId(order.Data.Result.Id.ToString()));
+
+        }
+
+        private TimeInForce? GetTimeInForce(SharedOrderType type, SharedTimeInForce? tif)
+        {
+            if (tif == SharedTimeInForce.ImmediateOrCancel) return TimeInForce.ImmediateOrCancel;
+            if (tif == SharedTimeInForce.FillOrKill) return TimeInForce.FillOrKill;
+            if (tif == SharedTimeInForce.GoodTillCanceled) return TimeInForce.GoodTillCanceled;
+            if (type == SharedOrderType.Limit) return TimeInForce.GoodTillCanceled; // Limit order always needs tif
+
+            return null;
+        }
+
         #endregion
     }
 }

@@ -162,6 +162,7 @@ namespace Binance.Net.Clients.UsdFuturesApi
                     if (symbol.UnderlyingType == UnderlyingType.Equity
                     || symbol.UnderlyingType == UnderlyingType.KrEquity
                     || symbol.UnderlyingType == UnderlyingType.HkEquity
+                    || symbol.UnderlyingType == UnderlyingType.CnEquity
                     || symbol.UnderlyingType == UnderlyingType.PreMarket)
                     {
                         return new SharedAssetInfo(symbol.BaseAsset, SharedAssetType.TradFi, SharedAssetSubType.Equity);
@@ -200,7 +201,9 @@ namespace Binance.Net.Clients.UsdFuturesApi
                 BaseAssetSubType = baseAssetInfo?.SubType,
                 QuoteAssetType = SharedAssetType.Crypto,
                 QuoteAssetSubType = SharedAssetSubType.StableCoin,
-                DisplayName = s.Name
+                DisplayName = s.Name,
+                UpperPriceLimitPercentage = s.PricePercentFilter?.MultiplierUp * 100 - 100,
+                LowerPriceLimitPercentage = s.PricePercentFilter?.MultiplierDown * 100 - 100
             };
         }
 
@@ -338,9 +341,9 @@ namespace Binance.Net.Clients.UsdFuturesApi
                 ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, resultTicker.Data.Symbol),
                 resultTicker.Data.Symbol,
                 resultTicker.Data.BestAskPrice,
-                resultTicker.Data.BestAskQuantity,
+                new SharedOrderQuantity(resultTicker.Data.BestAskQuantity),
                 resultTicker.Data.BestBidPrice,
-                resultTicker.Data.BestBidQuantity));
+                new SharedOrderQuantity(resultTicker.Data.BestBidQuantity)));
 
         }
 
@@ -571,7 +574,7 @@ namespace Binance.Net.Clients.UsdFuturesApi
                 x.OrderId.ToString(),
                 x.Id.ToString(),
                 x.Buyer ? SharedOrderSide.Buy : SharedOrderSide.Sell,
-                x.Quantity,
+                new SharedOrderQuantity(x.Quantity),
                 x.Price,
                 x.Timestamp)
             {
@@ -627,12 +630,11 @@ namespace Binance.Net.Clients.UsdFuturesApi
                             x.OrderId.ToString(),
                             x.Id.ToString(),
                             x.Buyer ? SharedOrderSide.Buy : SharedOrderSide.Sell,
-                            x.Quantity,
+                            new SharedOrderQuantity(x.Quantity),
                             x.Price,
                             x.Timestamp)
                         {
                             Price = x.Price,
-                            Quantity = x.Quantity,
                             Fee = x.Fee,
                             FeeAsset = x.FeeAsset,
                             Role = x.Maker ? SharedRole.Maker : SharedRole.Taker
@@ -674,15 +676,20 @@ namespace Binance.Net.Clients.UsdFuturesApi
                 data = data.Where(x => request.TradingMode == TradingMode.DeliveryLinear ? x.Symbol!.Contains("_") : !x.Symbol!.Contains("_"));
 
             var resultTypes = request.Symbol == null && request.TradingMode == null ? SupportedTradingModes : request.Symbol != null ? new[] { request.Symbol!.TradingMode } : new[] { request.TradingMode!.Value };
-            return HttpResult.Ok(result, data.Select(x => new SharedPosition(ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, x.Symbol), x.Symbol, Math.Abs(x.Quantity), x.UpdateTime)
-            {
-                UnrealizedPnl = x.UnrealizedPnl,
-                LiquidationPrice = x.LiquidationPrice == 0 ? null : x.LiquidationPrice,
-                Leverage = x.Leverage,
-                AverageOpenPrice = x.EntryPrice,
-                PositionMode = x.PositionSide == PositionSide.Both ? SharedPositionMode.OneWay : SharedPositionMode.HedgeMode,
-                PositionSide = x.PositionSide == PositionSide.Both ? (x.Quantity >= 0 ? SharedPositionSide.Long : SharedPositionSide.Short) : x.PositionSide == PositionSide.Short ? SharedPositionSide.Short : SharedPositionSide.Long
-            }).ToArray());
+            return HttpResult.Ok(result, data.Select(x => 
+                new SharedPosition(
+                    ExchangeSymbolCache.ParseSymbol(_topicId, EnvironmentName, null, x.Symbol),
+                    x.Symbol, 
+                    new SharedOrderQuantity(Math.Abs(x.Quantity)),
+                    x.UpdateTime)
+                {
+                    UnrealizedPnl = x.UnrealizedPnl,
+                    LiquidationPrice = x.LiquidationPrice == 0 ? null : x.LiquidationPrice,
+                    Leverage = x.Leverage,
+                    AverageOpenPrice = x.EntryPrice,
+                    PositionMode = x.PositionSide == PositionSide.Both ? SharedPositionMode.OneWay : SharedPositionMode.HedgeMode,
+                    PositionSide = x.PositionSide == PositionSide.Both ? (x.Quantity >= 0 ? SharedPositionSide.Long : SharedPositionSide.Short) : x.PositionSide == PositionSide.Short ? SharedPositionSide.Short : SharedPositionSide.Long
+                }).ToArray());
 
         }
 
@@ -873,7 +880,7 @@ namespace Binance.Net.Clients.UsdFuturesApi
             if (!result.Success)
                 return HttpResult.Fail<SharedOrderBook>(result);
 
-            return HttpResult.Ok(result, new SharedOrderBook(result.Data.Asks, result.Data.Bids));
+            return HttpResult.Ok(result, new SharedOrderBook(SharedQuantityType.BaseAsset, result.Data.Asks, result.Data.Bids));
 
         }
 
@@ -990,7 +997,7 @@ namespace Binance.Net.Clients.UsdFuturesApi
             if (!result.Success)
                 return HttpResult.Fail<SharedOpenInterest>(result);
 
-            return HttpResult.Ok(result, new SharedOpenInterest(result.Data.OpenInterest));
+            return HttpResult.Ok(result, new SharedOpenInterest(new SharedOrderQuantity(result.Data.OpenInterest)));
 
         }
 
