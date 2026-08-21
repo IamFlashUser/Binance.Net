@@ -27,7 +27,7 @@ For public market data only, no credentials needed: `new BinanceRestClient()`.
 
 ## Result pattern
 
-All methods return `WebCallResult<T>` (REST) or `CallResult<T>` (WebSocket). Always check `.Success` before reading `.Data`:
+REST methods return `HttpResult<T>` / `HttpResult`; WebSocket subscriptions and socket API requests return `WebSocketResult<T>` / `WebSocketResult`. Always check `.Success` before reading `.Data`:
 
 ```csharp
 var ticker = await restClient.SpotApi.ExchangeData.GetTickerAsync("BTCUSDT");
@@ -89,7 +89,7 @@ Shared symbol results include display names and asset type/subtype metadata, and
 - ❌ Never write raw `HttpClient` to Binance endpoints
 - ❌ Never use `.Result` or `.Wait()` — async-only
 - ❌ Never instantiate clients per-request — reuse via DI
-- ❌ Never skip checking `WebCallResult.Success`
+- ❌ Never skip checking result `.Success`
 - ❌ Never use `BinanceClient` (legacy) — always `BinanceRestClient`
 - ❌ Never pass a custom `clientOrderId` to `PlaceOrderAsync` unless required
 - ✅ Always use `BinanceCredentials("key", "secret")`, not generic `ApiCredentials`

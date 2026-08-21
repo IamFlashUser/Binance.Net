@@ -23,7 +23,7 @@ var restClient = new BinanceRestClient(options =>
 
 ## Result handling
 
-Methods return `WebCallResult<T>` (REST) or `CallResult<T>` (WebSocket). Always check `.Success` before reading `.Data`. The error is on `.Error`.
+REST methods return `HttpResult<T>` / `HttpResult`; WebSocket subscriptions and socket API requests return `WebSocketResult<T>` / `WebSocketResult`. Always check `.Success` before reading `.Data`. The error is on `.Error`.
 
 ## API structure
 

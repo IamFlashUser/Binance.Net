@@ -184,6 +184,8 @@ Use SharedApis for exchange-agnostic code across Binance, Bybit, OKX, Kraken, an
 | Shared futures order REST | `IFuturesOrderRestClient.PlaceFuturesOrderAsync(...)` |
 | Shared ticker socket | `ITickerSocketClient.SubscribeToTickerUpdatesAsync(...)` |
 | Shared order book socket | `IOrderBookSocketClient.SubscribeToOrderBookUpdatesAsync(...)` |
+| Shared spot order socket API | `ISpotOrderManagementSocketClient.PlaceSpotOrderAsync(...)` / `CancelSpotOrderAsync(...)` |
+| Shared futures order socket API (USD-M and COIN-M) | `IFuturesOrderManagementSocketClient.PlaceFuturesOrderAsync(...)` / `CancelFuturesOrderAsync(...)` |
 | Load typed spot symbols and catalog | `ISpotSymbolRestClient.GetSpotSymbolsAsync(...)`, then `.SpotSymbolCatalog` |
 | Load typed futures symbols and catalog | `IFuturesSymbolRestClient.GetFuturesSymbolsAsync(...)`, then `.FuturesSymbolCatalog` |
 
