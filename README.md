@@ -305,6 +305,10 @@ Make a one time donation in a crypto currency of your choice. If you prefer to d
 Alternatively, sponsor me on Github using [Github Sponsors](https://github.com/sponsors/JKorf). 
 
 ## Release notes
+* Version 13.5.1 - 01 Sep 2026
+    * Updated CryptoExchange.Net to v12.5.1
+    * Fixed restClient.SpotApi.Trading.ReplaceOrderAsync reporting successful cancel-replace as an unknown error
+
 * Version 13.5.0 - 21 Aug 2026
     * Updated to CryptoExchange.Net v12.5.0
     * Added CnEquity value to UnderlyingType Enum
